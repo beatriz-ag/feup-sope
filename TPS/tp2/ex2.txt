@@ -1,0 +1,14 @@
+a.
+
+ PID
+ stack space
+ text space
+ heap space
+
+b.
+
+ program counter
+ registers
+ stack
+ state
+

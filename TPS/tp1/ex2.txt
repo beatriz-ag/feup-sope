@@ -1,0 +1,11 @@
+Advantages & disadvantages on dynamic libraries over static.
+
+Advantages:
+    -  sharing of memory space.
+    -  automatic application update
+    -  executable file has minimun size
+
+
+Disadvantages:
+    -  mobility
+    -  performance

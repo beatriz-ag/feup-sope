@@ -1,0 +1,6 @@
+"The make program is an interpreter of special programs(makefiles), that can only be used in linux and just for compiling c source code"
+- false
+- int main(){
+    int var = 0;
+    return 0;
+}

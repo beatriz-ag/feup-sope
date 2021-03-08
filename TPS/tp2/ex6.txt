@@ -1,0 +1,7 @@
+Threads:
+- advantage: lighter weight operations
+- disadvantage: threads share memory with other threads of the same process
+
+Process:
+- advantage: each process has its own memory space
+- disadvantage: heavyweight operations

@@ -1,0 +1,4 @@
+a. write date: kernel mode.
+   read date: kernel & user mode.
+
+b. set timer.

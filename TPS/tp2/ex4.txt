@@ -1,0 +1,2 @@
+New é antes do ready
+Terminated é depois do running

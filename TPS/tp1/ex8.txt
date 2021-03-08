@@ -1,0 +1,5 @@
+Based on the output of the command ps aux say if Linux is multi-programming, multi-user, time sharing or no conlcusions.
+
+Linux is multi-programming because it can run various programs simultaneously.
+It is multi-user because, as we can see in the terminal, we can see more than one user.
+It is time sharing because it executes in both users simultaneously.

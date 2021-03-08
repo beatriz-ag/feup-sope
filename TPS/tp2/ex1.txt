@@ -1,0 +1,12 @@
+Um programa consiste num conjunto de insntruçoes que  
+elabora para atingir determinado objetivo. Ou seja, o programa 
+consiste essencialmente no código fonte.
+Uma thread é um componente responsável por executar as insntruçoes que foram
+elaboradas. O processador executa sempre as insntruçoes no contexto
+de uma thread.
+Um processo pode ser composto por várias threads.
+
+Exemplo:
+- O processo é fazer um bolo.
+- O Programa é a receita.
+- A thread 
