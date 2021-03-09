@@ -9,11 +9,11 @@
 
 void *rot(void *a) {
 	printf("\n\t In thread PID: %d ; TID: %lu.", getpid(), (unsigned long) pthread_self());
-    int value = *(int *)a * *(int*)a;
-    printf("Recebi o valor %d", *(int *)a);
+    *(int*) a *= *(int*)a;
+    printf("Creation number:  %d\n", *(int *)a);
     
 
-	pthread_exit((void*)value);	
+	pthread_exit(a);
 	}
 
 int main() {
@@ -27,18 +27,19 @@ int main() {
 
     // new threads creation
     for(i=0; i<NTHREADS; i++) {
-    	if (pthread_create(&ids[i], NULL, rot, NULL) != 0)
+        int *a = malloc(sizeof(int));
+        *a = i;
+    	if (pthread_create(&ids[i], NULL, rot,(void*)a )!= 0)
     		exit(-1);	// here, we decided to end process
     	else
     		printf("\nNew thread %d ; TID: %lu.", i, (unsigned long) ids[i]);
 	}
-    int x;
+
     // wait for finishing of created threads
     for(i=0; i<NTHREADS; i++) {
-        
-        x = i;
-	    pthread_join(ids[i], (void*) x);	// Note: threads give no termination code
-	    printf("\nTermination of thread %d: %lu.", i, (unsigned long)ids[i]);
+        void* returnI;
+	    pthread_join(ids[i], &returnI);	// Note: threads give no termination code
+	    printf("\nTermination of thread %d: %lu.\n Creation number squared: %d.\n", i, (unsigned long)ids[i], *(int*)returnI);
 	}
 
     printf("\n");

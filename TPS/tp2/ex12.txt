@@ -1,0 +1,6 @@
+1. In a named pipe, the program described could be executed between unrelated processes.The first process would write to the first pipe the color and the 
+second process would read it, process it and send its answer via the second pipe.
+
+2. In normal/unnamed pipes, this inter-communication could only happen in between parent-child processes.
+
+3. Signals don't send information and therefore could implement this communication.
