@@ -27,8 +27,8 @@ int main(int argn, char *argc[],char *envc[]){
         char *env;
         for (int j = 0; (env = envc[j])!= NULL; j++){
             
-            if(strcmp(env,argc[i]) == 0){
-                printf("%s\n",env);
+            if(strcmp(strtok(env,"="),argc[i]) == 0){
+                printf("%s\n",strktok(env,"\0"));
             }
         }
     }
