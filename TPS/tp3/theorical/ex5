@@ -1,0 +1,6 @@
+STRICT ALTERNATION
+
+A process will only enter critical region after the other 
+has entered and so one. This results in the event of the
+processes only entering critical regions alternating.
+First 0 then 1, then 1 then 0....

@@ -1,23 +1,24 @@
-#c compiler
-CC := cc
+CC = gcc
 
-#directories
-BIN := ./bin
-SRC := ./src
-INCLUDE := ./include
+BIN := bin/
+INCLUDE := include/
+SRC := src/
 
+RM = rm -f
 
-all: xmod xmod.stat xmod.asm xmod.prec 
+flags := -c -Wall
 
+xmod : ${BIN}auxXmod.o ${BIN}logFile.o ${BIN}xmod.o
+	cc -Wall -o  xmod ${BIN}auxXmod.o ${BIN}logFile.o  ${BIN}xmod.o 
 
-xmod: $(SRC)/xmod.c $(INCLUDE)/xmod.h
-	$(CC) -Wall -o xmod $(SRC)/xmod.c
-xmod.stat: $(SRC)/xmod.c $(INCLUDE)/xmod.h
-	$(CC) -Wall -static -o $(BIN)/xmod.stat $(SRC)/xmod.c
-xmod.asm: $(SRC)/xmod.c $(INCLUDE)/xmod.h
-	$(CC) -Wall -S -o $(BIN)/xmod.asm $(SRC)/xmod.c
-xmod.prec: $(SRC)/xmod.c $(INCLUDE)/xmod.h
-	$(CC) -Wall -E -o $(BIN)/xmod.prec $(SRC)/xmod.c
-clean:
-	rm -f $(SRC)/xmod $(BIN)/xmod.stat $(BIN)/xmod.asm $(BIN)/xmod.prec
+${BIN}auxXmod.o : ${SRC}auxXmod.c ${INCLUDE}auxXmod.h ${INCLUDE}logFile.h
+	cc  $(flags) ${SRC}auxXmod.c -o ${BIN}auxXmod.o
+
+${BIN}logFile.o : ${SRC}logFile.c ${INCLUDE}logFile.h
+	cc $(flags) ${SRC}logFile.c -o ${BIN}logFile.o
 	
+${BIN}xmod.o: ${SRC}xmod.c ${INCLUDE}xmod.h ${INCLUDE}auxXmod.h
+	cc  $(flags) ${SRC}xmod.c -o ${BIN}xmod.o 
+
+clean: 
+	$(RM) xmod ${BIN}auxXmod.o ${BIN}logFile.o ${BIN}xmod.o

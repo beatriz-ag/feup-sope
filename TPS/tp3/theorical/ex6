@@ -1,0 +1,3 @@
+If signal gets lots, the child will wait forever.
+Eg. if the parent sent signal before the child is waiting
+then lOOOOOOOO..........(P)
