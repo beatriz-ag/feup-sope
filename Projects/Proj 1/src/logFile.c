@@ -1,7 +1,14 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+
 #include "../include/logFile.h"
+#include "../include/auxXmod.h"
+
+
+
+static char *eventsStr[] = {"PROC_CREAT", "PROC_EXIT", "SIGNAL_RECV", "SIGNAL_SENT", "FILE_MODF"};
 
 void writeLog(int pid, enum logEvent event, char *msg, XmodData *processData){
 
@@ -13,20 +20,12 @@ void writeLog(int pid, enum logEvent event, char *msg, XmodData *processData){
             fprintf(stderr, "Fopen error\n");
             return;
         }
-
-        fprintf(file, "%lu ; %d ; %s ; %s\n", timedifference_msec(processData), pid, eventsStr[event], msg);
+        fprintf(file, "%ld ; %d ; %s ; %s\n", timeDifferenceMS(processData), pid, eventsStr[event], msg);
         fclose(file);
     }
 }
 
-void initLog(XmodData* processData) {
-
-    gettimeofday(&processData->startTime, NULL);
-
-    char *buffer = (char *)malloc(sizeof(char) * 50);
-    sprintf(buffer, "xmodStartTime= %lu %lu", processData->startTime.tv_sec, processData->startTime.tv_usec);
-    putenv(buffer);
-    
+void initLog(XmodData* processData) {    
     FILE *file = fopen(getenv("LOG_FILENAME"), "w+");
     if (file == NULL) {
         fprintf(stderr, "Fopen error\n");

@@ -11,53 +11,130 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <time.h>
 #include "../include/xmod.h"
 #include "../include/auxXmod.h"
 #include "../include/macros.h"
 
 XmodData processData;
 
-void stopProcesses(){
+void stopProcesses()
+{
 
+	sleep(1);
 	printf("Do you want to continue? (y or n)\n");
 	char input;
-	do{
+	do
+	{
 		scanf("%c", &input);
 
-		if (input == 'n'){
+		if (input == 'n')
+		{
 
-			writeLog(getpid(), SIGNAL_SENT, "SIGKILL : 0", &processData);
-			kill(0, SIGKILL);
+			writeLog(getpid(), SIGNAL_SENT, "SIGUSR1: 10", &processData);
+			kill(0, SIGUSR1);
 		}
 
 	} while (input != 'y' && input != 'n');
 
-	writeLog(getpid(), SIGNAL_SENT, "SIGCONT", &processData);
 	kill(0, SIGCONT);
+	writeLog(getpid(), SIGNAL_SENT, "SIGCONT: 18", &processData);
 }
 
-void contHandler(int sig){}
+void usrHandler(int signal)
+{
+	writeLog(getpid(), SIGNAL_RECV, "SIGUSR1: 10", &processData);
+	writeLog(getpid(), SIGNAL_SENT, "SIGKILL: 9", &processData);
+	kill(getpid(), SIGKILL);
+}
 
-void sigintHandler(int sig){
+void genericSignalHandler(int signal)
+{
+	if (getenv("LOG_FILENAME") != NULL)
+	{
+		char buffer[20];
+		snprintf(buffer, sizeof(buffer), "%d", signal);
+		writeLog(getpid(), SIGNAL_RECV, buffer, &processData);
+	}
+}
+
+void sigintHandler(int sig)
+{
 
 	printf("%d ; %s ; %d ; %d\n", getpid(), processData.currentDirectory, processData.nTotal, processData.nModif);
-	writeLog(getpid(), SIGNAL_RECV, "SIGINT", &processData);
+	writeLog(getpid(), SIGNAL_RECV, "SIGINT: 2", &processData);
 
-	if (getpid() == getpgrp()){
-
-		stopProcesses();}
-	else{
-
-		//Wait for signal from first process
-		signal(SIGCONT, contHandler);
-		sigset_t wset;
-		sigemptyset(&wset);
-		sigaddset(&wset, SIGCONT);
-		int sig;
-		sigwait(&wset, &sig);
-
-		writeLog(getpid(), SIGNAL_RECV, "SIGCONT", &processData);
+	if (getpid() == getpgrp())
+	{
+		stopProcesses();
 	}
+	else
+	{
+		writeLog(getpid(), SIGNAL_SENT, "SIGSTOP: 19", &processData);
+		writeLog(getpid(), SIGNAL_RECV, "SIGSTOP: 19", &processData);
+		kill(getpid(), SIGSTOP);
+		writeLog(getpid(), SIGNAL_RECV, "SIGCONT: 18", &processData);
+	}
+
+	struct sigaction sigintAction, old;
+	sigset_t smask;
+	if (sigemptyset(&smask) == -1)
+		perror("sigsetfunctions");
+
+	sigintAction.sa_handler = sigintHandler;
+	sigintAction.sa_mask = smask;
+	sigintAction.sa_flags = 0;
+
+	if (sigaction(SIGINT, &sigintAction, &old) == -1)
+		perror("sigaction");
+
+	sigaction(SIGINT, &old, NULL);
+
+	return;
+}
+
+void receiveSignal()
+{
+	struct sigaction new, sigintAction, sigusrAction;
+	sigset_t smask;
+
+	// prepare struct sigaction
+	if (sigemptyset(&smask) == -1)
+		perror("sigsetfunctions");
+
+	new.sa_handler = genericSignalHandler;
+	new.sa_mask = smask;
+	new.sa_flags = SA_RESTART;
+
+	sigintAction.sa_handler = sigintHandler;
+	sigintAction.sa_mask = smask;
+	sigintAction.sa_flags = SA_RESTART;
+
+	sigusrAction.sa_handler = usrHandler;
+	sigusrAction.sa_mask = smask;
+	sigusrAction.sa_flags = SA_RESTART;
+
+	if (sigaction(SIGINT, &sigintAction, NULL) == -1)
+		perror("sigaction");
+	if (sigaction(SIGUSR1, &sigusrAction, NULL) == -1)
+		perror("sigaction");
+
+	if (sigaction(SIGHUP, &new, NULL) == -1)
+		perror("sigaction");
+	if (sigaction(SIGQUIT, &new, NULL) == -1)
+		perror("sigaction");
+	if (sigaction(SIGSEGV, &new, NULL) == -1)
+		perror("sigaction");
+	if (sigaction(SIGUSR2, &new, NULL) == -1)
+		perror("sigaction");
+	if (sigaction(SIGPIPE, &new, NULL) == -1)
+		perror("sigaction");
+	if (sigaction(SIGALRM, &new, NULL) == -1)
+		perror("sigaction");
+	if (sigaction(SIGTERM, &new, NULL) == -1)
+		perror("sigaction");
+	if (sigaction(SIGCHLD, &new, NULL) == -1)
+		perror("sigaction");
 }
 
 /**
@@ -68,28 +145,31 @@ void sigintHandler(int sig){
  * @param flags 
  * @return int 
  */
-int xmod(char *path, char *modeStr, u_int8_t flags, mode_t previousMode)
+int xmod(char *path, char *modeStr, int8_t flags, mode_t previousMode)
 {
-	printf("in xmod\n");
 	processData.nTotal++;
 	char first = modeStr[0];
 	mode_t mode;
 
-	signal(SIGINT, sigintHandler);
-
 	previousMode &= ALL_PERMS;
-
-	if (first == '0'){   //numerical mode
-
+	if (first == '0')
+	{ //numerical mode
 		mode = strtol(modeStr, 0, 8);
 	}
-	else if (first == 'u' || first == 'g' || first == 'o' || first == 'a'){ //symbolic mode
+	else if (first == 'u' || first == 'g' || first == 'o' || first == 'a')
+	{
+		//Symbolic mode
 		mode = previousMode;
-		symbolicXmod(modeStr, &mode);
+		int symbolicExitCode = symbolicXmod(modeStr, &mode) != 0;
+		if (symbolicExitCode != 0)
+		{
+			return symbolicExitCode;
+		}
 	}
-	else{
-		fprintf(stderr, "xmod: Invalid type of user - %c\n", first);
-		return -1;
+	else
+	{
+		fprintf(stderr, "xmod: Invalid mode - %s\n", modeStr);
+		return MODE_ERROR;
 	}
 
 	previousMode &= ALL_PERMS;
@@ -98,61 +178,75 @@ int xmod(char *path, char *modeStr, u_int8_t flags, mode_t previousMode)
 	getSymbolic(previousMode, previousModeS);
 	getSymbolic(mode, modeS);
 
-
-	if (chmod(path, mode) != 0) {
+	if (chmod(path, mode) != 0)
+	{
 		fprintf(stderr, "failed to change mode of '%s' from %04o (%s) to %04o (%s)\n", path, previousMode, previousModeS, mode, modeS);
-		return -1;
+		return DEFAULT_ERROR;
 	}
 
 	if (previousMode != mode)
 		processData.nModif = processData.nModif + 1;
-	
-	
-	if (flags & (CHANG_FLAG | VERB_FLAG)){
-		
-		if (previousMode != mode){
+
+	if (flags & (CHANG_FLAG | VERB_FLAG))
+	{
+
+		if (previousMode != mode)
+		{
 			printf("mode of '%s' changed from %04o (%s) to %04o (%s)\n", path, previousMode, previousModeS, mode, modeS);
 		}
-		else if (flags & VERB_FLAG){
+		else if (flags & VERB_FLAG)
+		{
 			printf("mode of '%s' retained as %04o (%s)\n", path, mode, modeS);
 		}
 	}
 
-	if (previousMode != mode){
+	if (previousMode != mode)
+	{
 		char logMsg[500];
-		sprintf(logMsg, "%s : %04o : %04o", path, previousMode, mode);
+		snprintf(logMsg, sizeof(logMsg), "%s : %04o : %04o", path, previousMode, mode);
 		writeLog(getpid(), FILE_MODF, logMsg, &processData);
 	}
-		printf("out xmod\n");
 
 	return 0;
 }
 
-int symbolicXmod(char *modeStr, mode_t *newMode){
-		printf("in SYMBxmod\n");
+int symbolicXmod(char *modeStr, mode_t *newMode)
+{
 
 	char operator= modeStr[1];
 	mode_t mode = 0, previousMode = *newMode;
-	
+
 	//Permissions start at modeStr[2]
 	int i = SYMB_PERM_START;
-
+	bool r_flag = false;
+	bool w_flag = false;
+	bool x_flag = false;
 	//Get permissions
-	while (modeStr[i] != 0){
+	while (modeStr[i] != 0)
+	{
 		switch (modeStr[i++])
 		{
 		case 'r':
+			if (r_flag)
+				break;
 			mode += READ_MASK;
+			r_flag = true;
 			break;
 		case 'w':
+			if (w_flag)
+				break;
 			mode += WRITE_MASK;
+			w_flag = true;
 			break;
 		case 'x':
+			if (x_flag)
+				break;
 			mode += EXE_MASK;
+			x_flag = true;
 			break;
 		default:
 			printf("Invalid permission - %c\n", modeStr[i]);
-			return -1;
+			return PERMISSION_ERROR;
 		}
 	}
 
@@ -178,10 +272,10 @@ int symbolicXmod(char *modeStr, mode_t *newMode){
 		break;
 	default:
 		fprintf(stderr, "Invalid type of user - %c\n", modeStr[0]);
-		return -1;
+		return TYPE_ERROR;
 	}
 
-	mask += FILE_MASK;  //regular files have bit 1 at pos5
+	mask += FILE_MASK; //regular files have bit 1 at pos5
 
 	//Get new mode
 	switch (operator)
@@ -197,99 +291,105 @@ int symbolicXmod(char *modeStr, mode_t *newMode){
 		break;
 	default:
 		fprintf(stderr, "xmod: Invalid operator - %c\n", operator);
-		return -1;
+		return OPERATOR_ERROR;
 	}
-			printf("OUT SYMBxmod\n");
 
 	return 0;
 }
 
-void goThroughDirectory(char *path, int nargs, char *args[], u_int8_t flags){
+void goThroughDirectory(char *path, int nargs, char *args[], int8_t flags)
+{
 
 	bool hasLog = getenv("LOG_FILENAME") != NULL;
 	char logMsg[1024];
 	char *modeStr = args[nargs - 2];
 
-	
 	DIR *dir;
 	struct dirent *dent;
 	dir = opendir(processData.currentDirectory);
 
-	if (dir != NULL) {
-
-		while ((dent = readdir(dir)) != NULL) {
+	if (dir != NULL)
+	{
+		while ((dent = readdir(dir)) != NULL)
+		{
 
 			if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
 				continue;
-			
-			char nextPath[250];
-			strcpy(nextPath, processData.currentDirectory);
-			strcat(nextPath, "/");
-			strcat(nextPath, dent->d_name);
-			struct stat *nextFileInfo = (struct stat *)malloc(sizeof(struct stat));
 
-			printf("before statError\n");
-			int statErrorCode = stat(nextPath, nextFileInfo);
+			char nextPath[500];
+			snprintf(nextPath, sizeof(nextPath), "%s/%s", processData.currentDirectory, dent->d_name);
+			struct stat nextFileInfo;
 
-			if (statErrorCode != 0){
-				if (statErrorCode == EACCES) fprintf("xmod: cannot read directory '%s': Permission denied\n", nextPath);
-				else fprintf(stderr, "xmod: cannot access  '%s': No such file or directory\n", nextPath);
+			int statErrorCode = stat(nextPath, &nextFileInfo);
+
+			if (statErrorCode != 0)
+			{
+				if (statErrorCode == EACCES)
+					fprintf(stderr, "xmod: cannot read directory '%s': Permission denied\n", nextPath);
+				else
+					fprintf(stderr, "xmod: cannot access  '%s': No such file or directory\n", nextPath);
 				continue;
 			}
-						printf("after statError\n");
 
-				
-			xmod(nextPath, modeStr, flags, nextFileInfo->st_mode);
+			xmod(nextPath, modeStr, flags, nextFileInfo.st_mode);
 
-			if (S_ISDIR(nextFileInfo->st_mode)) {
-				printf("before fork\n");
+			if (S_ISDIR(nextFileInfo.st_mode))
+			{
 				int id = fork();
 
-				switch (id){
+				switch (id)
+				{
 				case 0:
-					strcpy(args[nargs - 1], nextPath);
+					snprintf(args[nargs - 1], sizeof(nextPath), "%s", nextPath);
 					execvp("./xmod", args);
 					exit(0);
 				case -1:
-					return -1;
+					return;
 				default:
-					if (hasLog) {
-						strcat(logMsg, "/");
-						strcat(logMsg, dent->d_name);
+					if (hasLog)
+					{
+						char logMsgArgs[1024];
+						getArgStr(nargs, args, logMsgArgs);
+						snprintf(logMsg, sizeof(logMsgArgs) + sizeof(dent->d_name), "%s/%s", logMsgArgs, dent->d_name);
 						writeLog(getpid(), PROC_CREAT, logMsg, &processData);
 					}
 					break;
 				}
-				printf("after fork()\n");
 			}
 		}
 		closedir(dir);
 
 		pid_t wpid;
-		int *status = 0;
-		printf("before waiting\n");
-		//Parent must wait for all children to finnish process
-		while ((wpid = wait(&status)) > 0){
-			sprintf(logMsg, "%d", status);
-			if(hasLog)
+		int status = 0;
+		//Parent must wait for all children to finish process
+		while ((wpid = wait(&status)) > 0)
+		{
+			snprintf(logMsg, sizeof(logMsg), "%d", status);
+			if (hasLog)
 				writeLog(wpid, PROC_EXIT, logMsg, &processData);
 		}
-		printf("waited for child\n");
 	}
 }
 
-int main(int nargs, char *args[]) {
-
+int main(int nargs, char *args[])
+{
 	processData.nTotal = 0;
 	processData.nModif = 0;
 	bool hasLog = getenv("LOG_FILENAME") != NULL;
+	char buffer[50];
+	receiveSignal();
 
-	//Check if is first born process 
-	if ((getpgrp() == getpid()) && hasLog) {
+	//Check if is first born process
+	if ((getpgrp() == getpid()) && hasLog)
+	{
+		gettimeofday(&processData.startTime, NULL);
+		snprintf(buffer, sizeof(char) * 50, "xmodStartTime=%lu %lu", processData.startTime.tv_sec, processData.startTime.tv_usec);
+		putenv(buffer);
 		initLog(&processData);
 	}
-	else if (hasLog) { //read first process starting time 
-
+	else if (hasLog)
+	{
+		//read first process starting time
 		char *startTimeStr = getenv("xmodStartTime");
 		struct timeval startTime;
 
@@ -297,48 +397,54 @@ int main(int nargs, char *args[]) {
 		processData.startTime = startTime;
 	}
 
-	char *logMsg = (char *)malloc(sizeof(char) * 500);
-
-	for (unsigned i = 1; i < nargs; i++) {
-
-		strcat(logMsg, args[i]);
-		if (i < nargs - 1)
-			strcat(logMsg, " ");
-	}
+	char logMsg[1024];
 	if (hasLog)
+	{
+
+		getArgStr(nargs, args, logMsg);
 		writeLog(getpid(), PROC_CREAT, logMsg, &processData);
+	}
 
-	if (nargs > 2){
-
-		u_int8_t flags = getFlags(nargs, args);
+	if (nargs > 2)
+	{
+		int8_t flags = getFlags(nargs, args);
+		if (flags == -1)
+		{
+			return -1;
+		}
 		char *modeStr = args[nargs - 2];
 
 		char path[250];
-		strcpy(path, args[nargs - 1]);
+		snprintf(path, sizeof(path), "%s", args[nargs - 1]);
 		processData.currentDirectory = path;
-		struct stat *fileInfo = (struct stat *)malloc(sizeof(struct stat));
-		int statErrorCode = stat(processData.currentDirectory, fileInfo);
+		struct stat fileInfo;
+		int statErrorCode = stat(processData.currentDirectory, &fileInfo);
 
-		if (statErrorCode != 0){
+		if (statErrorCode != 0)
+		{
 			if (statErrorCode == EACCES)
-				fprintf("xmod: cannot read directory '%s': Permission denied\n", processData.currentDirectory);
+				fprintf(stderr, "xmod: cannot read directory '%s': Permission denied\n", processData.currentDirectory);
 			else
 				fprintf(stderr, "xmod: cannot access  '%s': No such file or directory\n", processData.currentDirectory);
 			return -1;
 		}
 
 		//Check if first born process
-		if (getpgrp() == getpid()){
-			xmod(processData.currentDirectory, modeStr, flags, fileInfo->st_mode);
+		if (getpgrp() == getpid())
+		{
+			int xmodExitCode = xmod(processData.currentDirectory, modeStr, flags, fileInfo.st_mode);
+
+			if (xmodExitCode < DEFAULT_ERROR)
+			{
+				// if true, the flags or mode is wrong, so the program should be terminated
+				return xmodExitCode;
+			}
 		}
-		if (flags & REC_FLAG && S_ISDIR(fileInfo->st_mode)) {
-			printf("before goThroughDirectory\n");
+		if (flags & REC_FLAG && S_ISDIR(fileInfo.st_mode))
+		{
 			goThroughDirectory(path, nargs, args, flags);
-			printf("after goThroughDirectory\n");
 		}
 	}
 
-	//Testing purposes
-	printf("\n\t\tFINAL nModif = %d, nTotal = %d\n", processData.nModif, processData.nTotal);
 	return 0;
 }
