@@ -1,0 +1,21 @@
+- Linux
+    Linux doesn't care about extensions.
+
+- MsWindows
+    Windows cares about extensions.
+
+- (By the way, try to explain why MsWindows, by default, hide file extensions from users.)
+    Security reasons - it avoids users from changing or messing something up.
+    Unnecessary.
+
+
+A difference between Linux and Windows is how they treat application files vs data files. On Windows, the line between the two is blurred; 
+there are a few types of executable files, and they are determined by their extension (.exe, .bat, etc.), but in most contexts you can 
+“execute” any file (e.g. by clicking in Explorer), and this executes the executable that is associated with that file type, where the file type 
+is entirely determined by the extension (so executing a .doc file might start c:\Program Files\something or other\winword.exe, executing a .py 
+file might start a Python interpreter, etc.).
+
+On Linux, there is a notion of executable file which is independent of the file name. Executables generally have no extension, because 
+they're meant to be typed by the user. The type of the file is irrelevant, all the user wants to do is execute the file. The kernel determines 
+how to execute the file from the file contents: it knows some file types natively, and the shebang mechanism allows a file to declare any other 
+executable file¹ as its interpreter.

@@ -1,0 +1,19 @@
+One of the advantages of binary files is that they are more efficient.
+
+In terms of memory, storing values using numeric formats such as IEEE 754, rather than as text characters, tends to use less memory.
+
+In addition, binary formats also offer advantages in terms of speed of access. While the basic unit of information is very straightforward in a 
+plain text file (one byte equals one character), finding the actual data values is often much harder. For example, in order to find the third data 
+value on the tenth row of a CSV file, the reader software must keep reading bytes until nine end-of-line characters have been found and then two 
+delimiter characters have been found. This means that, with text files, it is usually necessary to read the entire file in order to find any particular value.
+
+For binary formats,include some sort of format description, or map, is required to be able to find the location (and meaning) of any value in the file. 
+However, the advantage of having such a map is that any value within the file can be found without having to read the entire file.
+
+As a typical example, a standard feature of binary files is the inclusion of some sort of header information, both for the overall file, and for 
+subsections within the file. This header information contains information such as the byte location within the file where a set of values begins 
+(a pointer), the number of bytes used for each data value (the data size), plus the number of data values. It is then very simple to find, for example, 
+the third data value within a set of values, which is: pointer + 2 x size.
+
+More information is required in order to locate values within a binary format, but once that information is available, navigation within the file is 
+faster and more flexible.

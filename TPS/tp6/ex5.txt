@@ -1,0 +1,3 @@
+Este ficheiro e um ficheiro de teste.
+Como sera o output do programa
+aborrecido

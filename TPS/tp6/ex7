@@ -1,0 +1,20 @@
+Describe three of the file operations listed on the theoretical classes' supporting sheets that have a similar counterpart in the list of directory operations.
+
+Create
+Delete
+Rename
+
+Why does the operation on directories readdir() not have an invocation syntax in Unix similar to the corresponding read() 
+
+ The  readdir() function returns a pointer to a dirent structure representing
+       the next directory entry in the directory stream pointed to by dirp.  It re‐
+       turns  NULL  on  reaching the end of the directory stream or if an error oc‐
+       curred.
+
+read()  attempts  to read up to count bytes from file descriptor fd into the
+       buffer starting at buf.
+
+       On files that support seeking, the read operation commences at the file off‐
+       set, and the file offset is incremented by the number of bytes read.  If the
+       file offset is at or past the end of file, no bytes are read, and read() re‐
+       turns zero.

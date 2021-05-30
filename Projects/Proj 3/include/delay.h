@@ -1,0 +1,4 @@
+#ifndef REALSERVER_INCLUDE_DELAY_H_
+#define REALSERVER_INCLUDE_DELAY_H_ 1
+extern int delay;
+#endif // REALSERVER_INCLUDE_DELAY_H_
